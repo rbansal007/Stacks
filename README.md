@@ -2,12 +2,20 @@
 
 This repository contains a Terraform Stack configuration for testing the **Stacks** feature in Terraform Enterprise 2.0.
 
+## Requirements
+
+- Terraform Enterprise 2.0+ with Stacks feature enabled (`access-beta-tools: true`)
+- Terraform version **1.13.0+** (required for Stacks support)
+- AWS IAM permissions on the TFE instance role (or explicit `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env vars set on the stack)
+
 ## Structure
 
 ```
 .
-├── tfstacks.hcl                    # Stack definition (components & dependencies)
-├── tfdeploy.hcl                    # Deployment definitions (dev, staging)
+├── components.tfcomponent.hcl      # Stack definition (components & dependencies)
+├── deployments.tfdeploy.hcl        # Deployment definitions (dev, staging)
+├── .terraform-version              # Pins Terraform to 1.13.0
+├── .terraform.lock.hcl             # Provider lock file (linux_amd64 + darwin_arm64)
 ├── components/
 │   ├── networking/                 # Networking component
 │   │   ├── main.tf                # VPC, subnets, IGW, route tables, security groups
@@ -18,6 +26,10 @@ This repository contains a Terraform Stack configuration for testing the **Stack
 │       ├── variables.tf           # Input variables (includes networking outputs)
 │       └── outputs.tf             # Instance details
 ```
+
+> **Note on file naming:** TFE 2.0 requires strict file naming conventions:
+> - Stack definition file must use the `.tfcomponent.hcl` extension (e.g. `components.tfcomponent.hcl`)
+> - Deployments file must use the `.tfdeploy.hcl` extension (e.g. `deployments.tfdeploy.hcl`)
 
 ## Components
 
@@ -46,7 +58,17 @@ This repository contains a Terraform Stack configuration for testing the **Stack
 1. Connect this repo as a VCS provider in TFE
 2. Create a new **Stack** in your TFE organization
 3. Point it to this repository
-4. TFE will detect `tfstacks.hcl` and `tfdeploy.hcl`
-5. Select a deployment (dev/staging) and trigger a plan
+4. Ensure the TFE instance IAM role has EC2 permissions (or set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` as sensitive environment variables on the stack)
+5. TFE will detect `components.tfcomponent.hcl` and `deployments.tfdeploy.hcl`
+6. Deployments (`dev` and `staging`) will appear in the Deployments tab
+7. Trigger a plan/apply per deployment
+
+## Lock File
+
+The `.terraform.lock.hcl` was generated with cross-platform support:
+```
+terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
+```
+This is required because TFE runs on `linux_amd64` while local development may be on macOS (`darwin_arm64`).
 6. Review the coordinated plan across both components
 7. Apply — networking deploys first, then compute
